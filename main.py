@@ -1,5 +1,4 @@
 import socket
-
 import requests.exceptions
 import urllib3.exceptions
 import vk_api
@@ -22,9 +21,9 @@ def admin(id, text):
     t1 = t.copy()
     f = True
     for j in t:
-        if j[0] == '%' and j[-1] == '%':
+        if j[0] == '%' and j[-1] == '%' and len(j) != 1:
             t1.remove(j)
-        elif j[0] == '%':
+        elif j[0] == '%' and f:
             t1.remove(j)
             f = False
         elif j[-1] == '%' and f:
@@ -38,7 +37,7 @@ def admin(id, text):
             f = True
         elif not f:
             t1.remove(j)
-    if not f:
+    if f:
         if t1:
             vk_session.method('messages.send', {'chat_id': id, 'message': random.choice(t1), 'random_id': 0})
         else:
@@ -75,8 +74,8 @@ for event in longpoll.listen():
                 if msg == '!геншин':
                     sender(id, 'ГЕНШИН ТОООООООООП!!!!!!!')
     except requests.exceptions.ReadTimeout:
-        pass
+        continue
     except socket.timeout:
-        pass
+        continue
     except urllib3.exceptions.ReadTimeoutError:
-        pass
+        continue
