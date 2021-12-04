@@ -18,20 +18,29 @@ def sender(id, text):
 
 
 def admin(id, text):
-    t = text
-    t1 = t
+    t = text.split()
+    t1 = t.copy()
     f = True
-    a = 0
-    for i in range(len(t)):
-        if t[i] == '%' and f:
+    for j in t:
+        if j[0] == '%' and j[-1] == '%':
+            t1.remove(j)
+        elif j[0] == '%':
+            t1.remove(j)
             f = False
-            a = i
-        elif t[i] == '%' and not f:
-            t1 = t1[:a] + t1[i + 1:]
+        elif j[-1] == '%' and f:
+            t1.remove(j)
+            f = False
+        elif j[-1] == '%' and not f:
+            t1.remove(j)
             f = True
-    if f:
+        elif j[0] == '%' and not f:
+            t1.remove(j)
+            f = True
+        elif not f:
+            t1.remove(j)
+    if not f:
         if t1:
-            vk_session.method('messages.send', {'chat_id': id, 'message': random.choice(t1.split()), 'random_id': 0})
+            vk_session.method('messages.send', {'chat_id': id, 'message': random.choice(t1), 'random_id': 0})
         else:
             vk_session.method('messages.send', {'chat_id': id, 'message': 'Ты что дурак? Я из чего должен выбирать?', 'random_id': 0})
     else:
@@ -58,8 +67,9 @@ for event in longpoll.listen():
                     admin(id, msg[8:])
                 if msg[:6] == '!спам ':
                     try:
-                        for _ in range(int(msg.split()[-1])):
-                            sender(id, ' '.join(msg.split()[1:-1]))
+                        if msg.split()[-1] != '0':
+                            for _ in range(int(msg.split()[-1])):
+                                sender(id, ' '.join(msg.split()[1:-1]))
                     except ValueError:
                         sender(id, 'Дурак Последнее должно быть число')
                 if msg == '!геншин':
