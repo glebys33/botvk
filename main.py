@@ -38,12 +38,12 @@ def admin(id, text):
         vk_session.method('messages.send', {'chat_id': id, 'message': 'Ты дебил. Исправь комментарии', 'random_id': 0})
 
 
-for event in longpoll.listen():
-    if event.type == VkBotEventType.MESSAGE_NEW:
-        if event.from_chat:
-            msg = event.object.message['text'].lower()
-            id = event.chat_id
-            try:
+try:
+    for event in longpoll.listen():
+        if event.type == VkBotEventType.MESSAGE_NEW:
+            if event.from_chat:
+                msg = event.object.message['text'].lower()
+                id = event.chat_id
                 if msg[:7] == '!выбор ':
                     admin(id, msg[7:])
                 if msg[:8] == '!выбери ':
@@ -62,9 +62,11 @@ for event in longpoll.listen():
                             sender(id, ' '.join(msg.split()[1:-1]))
                     except ValueError:
                         sender(id, 'Дурак Последнее должно быть число')
-            except requests.exceptions.ReadTimeout:
-                pass
-            except socket.timeout:
-                pass
-            except urllib3.exceptions.ReadTimeoutError:
-                pass
+                if msg == '!геншин':
+                    sender(id, 'ГЕНШИН ТОООООООООП!!!!!!!')
+except requests.exceptions.ReadTimeout:
+    pass
+except socket.timeout:
+    pass
+except urllib3.exceptions.ReadTimeoutError:
+    pass
