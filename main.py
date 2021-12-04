@@ -33,13 +33,13 @@ def admin(id, text):
         if t1:
             vk_session.method('messages.send', {'chat_id': id, 'message': random.choice(t1.split()), 'random_id': 0})
         else:
-            vk_session.method('messages.send', {'chat_id': id, 'message': 'ты что дурак? Я из чего должен выбирать?', 'random_id': 0})
+            vk_session.method('messages.send', {'chat_id': id, 'message': 'Ты что дурак? Я из чего должен выбирать?', 'random_id': 0})
     else:
         vk_session.method('messages.send', {'chat_id': id, 'message': 'Ты дебил. Исправь комментарии', 'random_id': 0})
 
 
-try:
-    for event in longpoll.listen():
+for event in longpoll.listen():
+    try:
         if event.type == VkBotEventType.MESSAGE_NEW:
             if event.from_chat:
                 msg = event.object.message['text'].lower()
@@ -64,9 +64,9 @@ try:
                         sender(id, 'Дурак Последнее должно быть число')
                 if msg == '!геншин':
                     sender(id, 'ГЕНШИН ТОООООООООП!!!!!!!')
-except requests.exceptions.ReadTimeout:
-    pass
-except socket.timeout:
-    pass
-except urllib3.exceptions.ReadTimeoutError:
-    pass
+    except requests.exceptions.ReadTimeout:
+        pass
+    except socket.timeout:
+        pass
+    except urllib3.exceptions.ReadTimeoutError:
+        pass
