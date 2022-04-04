@@ -24,11 +24,12 @@ print('бот запущен')
 ✓счётчик дней / !доска
 ✓!когда
 ✓!праздник
-✓доброе утро + сняфяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяяя
+✓доброе утро + сн
 ежедневное ограничение на анекдоты
 сделать авто определение +/- у !доски
 добавить wifi.py в main.py
-✓!пабло'''
+✓!пабло
+!через+'''
 
 
 def sender(id, text):
@@ -83,6 +84,26 @@ def admin(id, text):
                               {'chat_id': id, 'message': 'Ты что дурак? Я из чего должен выбирать?', 'random_id': 0})
     else:
         vk_session.method('messages.send', {'chat_id': id, 'message': 'Ты дебил. Исправь комментарии', 'random_id': 0})
+
+
+def spam(id, msg, us):
+    try:
+        if len(msg) != 2:
+            if msg[-1] != '0':
+                with open('data/spam.txt') as file, open('data/money.txt') as m:
+                    a = {int(i.split()[0]): i.split()[1:] for i in m.readlines() if len(i.split()) > 0}
+                    spam = file.readlines()
+                if int(msg[-1]) < int(spam[int(a[us][1])]):
+                    for _ in range(int(msg[-1])):
+                        sender(id, f' '.join(msg[1:-1]))
+                else:
+                    sender(id, 'Много хочешь))')
+        elif len(msg) == 2 and isdigit(msg[1]):
+            sender(id, f'И что я по твоему должен сделать {msg[-1]} раз?')
+        else:
+            sender(id, 'Дурак Последнее должно быть число')
+    except ValueError:
+        sender(id, 'Дурак Последнее должно быть число')
 
 
 def anecdot(id):
@@ -606,6 +627,41 @@ def zdan_clav(text: str, house: str, lvl: int,  id: int):
 
     keyboard.add_button('Выход', color=VkKeyboardColor.PRIMARY)
 
+    if lvl < 3:
+        vk.messages.send(
+            peer_id=id,
+            random_id=get_random_id(),
+            keyboard=keyboard.get_keyboard(),
+            message=text
+        )
+    else:
+        vk.messages.send(
+            peer_id=id,
+            random_id=get_random_id(),
+            keyboard=keyboard.get_keyboard(),
+            message=text.split('\n')[0] + '\nМаксимальный уровень'
+        )
+
+
+def magaz_clav(text: str, id: int):
+    keyboard = VkKeyboard(one_time=False)
+
+    keyboard.add_button('прокачка !спам', color=VkKeyboardColor.NEGATIVE)
+
+    keyboard.add_line()
+
+    keyboard.add_button('неАСУ', color=VkKeyboardColor.PRIMARY)
+    keyboard.add_button('Обращения', color=VkKeyboardColor.POSITIVE)
+    keyboard.add_button('Таблицы', color=VkKeyboardColor.PRIMARY)
+
+    keyboard.add_line()
+
+    keyboard.add_button('Донат', color=VkKeyboardColor.SECONDARY)
+
+    keyboard.add_line()
+
+    keyboard.add_button('Выход', color=VkKeyboardColor.SECONDARY)
+
     vk.messages.send(
         peer_id=id,
         random_id=get_random_id(),
@@ -614,13 +670,47 @@ def zdan_clav(text: str, house: str, lvl: int,  id: int):
     )
 
 
+def clav(id):
+    keyboard = VkKeyboard(one_time=False)
+
+    keyboard.add_button('Хохла спросить забыли', color=VkKeyboardColor.POSITIVE)
+
+    keyboard.add_line()
+
+    keyboard.add_button('!пабло', color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button('!праздник', color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button('!топ', color=VkKeyboardColor.SECONDARY)
+
+    keyboard.add_line()
+
+    keyboard.add_button('!курс', color=VkKeyboardColor.PRIMARY)
+    keyboard.add_button('!доска', color=VkKeyboardColor.PRIMARY)
+
+    keyboard.add_line()
+
+    keyboard.add_button('!нг', color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_button('!геншин', color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_button('!бен', color=VkKeyboardColor.NEGATIVE)
+
+    keyboard.add_line()
+
+    keyboard.add_button('!анекдот', color=VkKeyboardColor.POSITIVE)
+    keyboard.add_button('!помощь', color=VkKeyboardColor.POSITIVE)
+
+    vk_session.method('messages.send', {
+        'chat_id': id,
+        'message': 'ну держи',
+        'random_id': get_random_id(),
+        'keyboard': keyboard.get_keyboard()})
+
+
 def buy_zavod(zav, id):
     with open('data/houses.txt', encoding='utf8') as f, open('data/money.txt', 'r+') as m, open('data/levels.txt', 'r+') as l:
         h = {' '.join(i.split()[:-6]): i.split()[-6:] for i in f.readlines() if len(i.split()) > 0}
         zavid = list(h.keys()).index(zav)
         a = {int(i.split()[0]): i.split()[1:] for i in m.readlines() if len(i.split()) > 0}
         lvl = {int(i.split()[0]): i.split()[1:] for i in l.readlines() if len(i.split()) > 0}
-        if (int(a[id][0]) >= int(h[zav][3 + int(lvl[id][zavid])])) and int(lvl[id][zavid]) < 3:
+        if (int(lvl[id][zavid]) < 3) and (int(a[id][0]) >= int(h[zav][3 + int(lvl[id][zavid])])):
             a[id][0] = str(int(a[id][0]) - int(h[zav][3 + int(lvl[id][zavid])]))
             lvl[id][zavid] = str(int(lvl[id][zavid]) + 1)
             if int(lvl[id][zavid]) == 1:
@@ -633,7 +723,7 @@ def buy_zavod(zav, id):
             l.writelines([str(i) + ' ' + " ".join(lvl[i]) + '\n' for i in lvl])
         elif int(lvl[id][zavid]) == 3:
             zdan_clav('Это здание максимального уровня', zav, 3, id)
-        elif int(a[id][0]) < int(h[zav][int(lvl[id][zavid])]):
+        elif int(a[id][0]) < int(h[zav][3 + int(lvl[id][zavid])]):
             zdan_clav('Недостаточно средств', zav, int(lvl[id][zavid]), id)
 
 
@@ -649,6 +739,8 @@ def start():
 def main():
     for event in longpoll.listen():
         if event.type == VkBotEventType.MESSAGE_NEW:
+            if event.object.message['text'][:28] == '[club209322786|@ignorshici] ':
+                event.object.message['text'] = event.object.message['text'][28:]
             if event.from_chat:
                 msg = event.object.message['text']
                 id = event.chat_id
@@ -776,6 +868,8 @@ def main():
 
 !день ДД.ММ.ГГГГ - выводит день недели, который будет в указанную дату
 
+!бен комментарий - схож с командой !выбор, но выводит либо yes, либо no, либо ho-ho-ho, либо uue.
+
 В лс бота присутствует мини-игра "Богачъ". Её суть заключается в покупке 
 различных различных предприятий, приносящих прибыль. Главная цель игры стать 
 Илоной Максом. Предприятия имеют три уровня, на каждом из которых 
@@ -797,18 +891,8 @@ def main():
                                 sender(id,
                                        '\n'.join([f"{vk.users.get(user_ids=i)[0]['first_name']} {i[1]}" for i in a]))
                         elif msg[0] == '!спам':
-                            try:
-                                if len(msg) != 2:
-                                    if msg[-1] != '0':
-                                        if int(msg[-1]) < 100:
-                                            for _ in range(int(msg[-1])):
-                                                sender(id, f' '.join(msg[1:-1]))
-                                        else:
-                                            sender(id, 'Много хочешь))')
-                                else:
-                                    sender(id, f'И что я по твоему должен сделать {msg[-1]} раз?')
-                            except ValueError:
-                                sender(id, 'Дурак Последнее должно быть число')
+                            th = Thread(target=spam, args=(id, msg, us))
+                            th.start()
                         elif msg[0] == '!геншин':
                             sender(id, 'ГЕНШИН ТОООООООООП!!!!!!!')
                         elif msg[0] == '!реши':
@@ -871,6 +955,13 @@ def main():
                             weekday(id, msg)
                         elif msg[0] == '!через':
                             cherez(id, msg)
+                        elif msg[0] == '!клава':
+                            clav(id)
+                        elif msg[0] == '!бен':
+                            if ' '.join(msg[1:]).lower() == 'do you love god?':
+                                admin(id, ['no'])
+                            else:
+                                admin(id, ['yes', 'no', 'ho-ho-ho', 'uue'])
                     except IndexError:
                         pass
             elif event.from_user:
@@ -897,10 +988,6 @@ def main():
                 elif msg == 'Здания':
                     with open('data/money.txt', 'r+') as file:
                         a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if id in a:
-                            a[id][2] = '1'
-                            file.seek(0)
-                            file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
                     with open('data/houses.txt', encoding='utf8') as f, open('data/levels.txt', 'r+') as l:
                         s = f.readlines()
                         h = {' '.join(i.split()[:-6]): i.split()[-6:] for i in s if len(i.split()) > 0}
@@ -912,12 +999,9 @@ def main():
                 elif msg == '--->':
                     with open('data/money.txt', 'r+') as file:
                         a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] == '1':
-                            a[id][5] = str(int(a[id][5]) + 1)
-                            file.seek(0)
-                            file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
-                        else:
-                            continue
+                        a[id][5] = str(int(a[id][5]) + 1)
+                        file.seek(0)
+                        file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
                     with open('data/houses.txt', encoding='utf8') as f, open('data/levels.txt', 'r+') as l:
                         s = f.readlines()
                         h = {' '.join(i.split()[:-6]): i.split()[-6:] for i in s if len(i.split()) > 0}
@@ -929,12 +1013,9 @@ def main():
                 elif msg == '<---':
                     with open('data/money.txt', 'r+') as file:
                         a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] == '1':
-                            a[id][5] = str(int(a[id][5]) - 1)
-                            file.seek(0)
-                            file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
-                        else:
-                            continue
+                        a[id][5] = str(int(a[id][5]) - 1)
+                        file.seek(0)
+                        file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
                     with open('data/houses.txt', encoding='utf8') as f, open('data/levels.txt', 'r+') as l:
                         s = f.readlines()
                         h = {' '.join(i.split()[:-6]): i.split()[-6:] for i in s if len(i.split()) > 0}
@@ -944,203 +1025,94 @@ def main():
                     zdan_clav(house + f': \nЦена: {s[zavid].split()[-3 + int(lvl[id][zavid])]}', house, int(lvl[id][zavid]), id)
 
                 elif msg == 'Владимирский химический завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Автоприбор':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Ивановские мануфактуры':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Шишкосушильная фабрика':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Ашинский металлургический завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Навозо-перегнойный завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Конюшня':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Дерьмоперегонный завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Завод ЦЕМЕНТА':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Атомно-ядерный завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'マンガファクトリー':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Целюлозно-бумажный завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Пивоварный завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Фармацестический завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Спермобанк':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Ликёро-водочный завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Завод по производству сала':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Стекольный завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'ВАЗ':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'エロアニメ工房':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Предприятие Россетей':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Пельменная фабрика':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Говновяземский мясокомбинат':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Казино "NeNeabalovo100%"':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Завод Ford':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Завод эплокаров':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Рыбный завод':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Space X':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        if a[id][2] != '1':
-                            continue
                     buy_zavod(msg, id)
 
                 elif msg == 'Магазин улучшений':
-                    defolt_clav('В разработке', id)
+                    magaz_clav('Выбирай с умом', id)
+
+                elif msg == 'Донат':
+                    magaz_clav('1 рубль = 50 Еврейская креативная валюта(ЕКВ)\n Сбер:5469 1000 1372 5537 ', id)
 
                 elif msg == 'Получить прибыль':
                     with open('data/money.txt', 'r+') as m, open('data/levels.txt') as l, open('data/houses.txt', encoding='utf8') as h:
@@ -1165,13 +1137,6 @@ def main():
                             m.writelines([str(i) + ' ' + " ".join(us_id[i]) + '\n' for i in us_id])
 
                 elif msg == 'Выход':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        a[id][2] = '0'
-                        a[id][3] = '0'
-                        a[id][4] = '0'
-                        file.seek(0)
-                        file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
                     defolt_clav('Главное меню', id)
 
                 elif msg == 'Начать':
