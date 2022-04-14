@@ -11,6 +11,7 @@ from threading import Thread
 from datetime import datetime
 from config import TOKEN
 from bs4 import BeautifulSoup as BS
+from sympy import sympify, Symbol, expand
 import sqlite3
 import json
 import random
@@ -18,7 +19,6 @@ import random
 vk_session = vk_api.VkApi(token=TOKEN)
 longpoll = VkBotLongPoll(vk_session, 209322786)
 vk = vk_session.get_api()
-print('бот запущен')
 ''' ✓ / ❌
 ❌сообщения как валюта
 ✓счётчик дней / !доска
@@ -77,7 +77,6 @@ def admin(id, text):
     if f:
         if t1:
             r = random.choice(t1)
-            print('бот выбрал:', r)
             vk_session.method('messages.send', {'chat_id': id, 'message': r, 'random_id': 0})
         else:
             vk_session.method('messages.send',
@@ -93,7 +92,7 @@ def spam(id, msg, us):
                 with open('data/spam.txt') as file, open('data/money.txt') as m:
                     a = {int(i.split()[0]): i.split()[1:] for i in m.readlines() if len(i.split()) > 0}
                     spam = file.readlines()
-                if int(msg[-1]) < int(spam[int(a[us][1])]):
+                if int(msg[-1]) <= int(spam[int(a[us][1])]):
                     for _ in range(int(msg[-1])):
                         sender(id, f' '.join(msg[1:-1]))
                 else:
@@ -161,21 +160,6 @@ def new_anecdot(text):
     cur = con.cursor()
     cur.execute('''INSERT INTO anecdotes(anecdote) VALUES (?)''', (" ".join(text),))
     con.commit()
-
-
-def prov_anecdot(id, msg):
-    print('''+ для добавления
-- для отказа''')
-    while True:
-        if (n := input()) == '+':
-            new_anecdot(msg[1:])
-            print("добавленно")
-            break
-        elif n == '-':
-            print('значит плохой анекдот')
-            break
-        else:
-            print('+ или -')
 
 
 def ng(id):
@@ -346,23 +330,6 @@ def update_board():
         time.sleep(60)
 
 
-def forced_update_board():
-    print('''да для обновления
-нет для отказа''')
-    while True:
-        n = input()
-        if n == 'да':
-            f = True
-            break
-        elif n == 'нет':
-            f = False
-            break
-        else:
-            print("да или нет")
-    if f:
-        update()
-
-
 def save_board(ckvsck, spp, smm, pinf, minf, const):
     with open('data/board.txt', 'w+') as file:
         file.seek(0)
@@ -518,8 +485,7 @@ def board(id, msg):
 • СК (значение 1) (значение 2) - устанавливает новое значение в соревновании СК;''')
         elif msg[1] == 'update':
             if len(msg) == 2:
-                th = Thread(target=forced_update_board, args=())
-                th.start()
+                update()
             else:
                 if len(msg) > 3:
                     if isdigit(msg[-1]):
@@ -585,6 +551,44 @@ def board(id, msg):
                     sender(id, 'Последнии 2 должны быть числами')
             else:
                 sender(id, 'Неверный формат')
+
+
+def proisvod(id, msg):
+    try:
+        if len(msg) == 1:
+            sender(id, 'гений')
+            return
+        msg = ' '.join(msg[1:])
+        if (',' in msg) and (msg.count(',') == 1):
+            expr = sympify(msg.split(',')[0])
+            x = Symbol('x')
+            sender(id, f"f'(x)={expr.diff()} \nf'(x0)={expr.diff().subs('x', int(msg.split(',')[1]))}")
+        elif msg.count(',') > 1:
+            sender(id, 'Ты написал что-то не то')
+        else:
+            expr = sympify(msg)
+            sender(id, expr.diff())
+    except ValueError:
+        sender(id, 'Чё ты написал? Я не понял')
+
+
+def kas(id, msg):
+    try:
+        if len(msg) == 1:
+            sender(id, 'гений')
+            return
+        if isdigit(msg[-1]):
+            expr = sympify(' '.join(msg[1:-1]))
+            pr = expr.diff()
+            x = Symbol('x')
+            fx = expr.subs(x, int(msg[-1]))
+            fsx = pr.subs(x, int(msg[-1]))
+            ans = fx + fsx*(x - int(msg[-1]))
+            sender(id, f'y = {expand(ans)}')
+        else:
+            sender(id, 'Последним должно быть число')
+    except ValueError:
+        sender(id, 'Чё ты написал? Я не понял')
 
 
 def defolt_clav(text: str, id: int):
@@ -668,6 +672,43 @@ def magaz_clav(text: str, id: int):
         keyboard=keyboard.get_keyboard(),
         message=text
     )
+
+
+def spam_clav(text, id):
+    keyboard = VkKeyboard(one_time=False)
+
+    keyboard.add_button('Уровни', color=VkKeyboardColor.SECONDARY)
+
+    keyboard.add_line()
+
+    keyboard.add_button('Улучшить', color=VkKeyboardColor.PRIMARY)
+
+    keyboard.add_line()
+
+    keyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
+
+    vk.messages.send(
+        peer_id=id,
+        random_id=get_random_id(),
+        keyboard=keyboard.get_keyboard(),
+        message=text
+    )
+
+
+def spam_updt(lvl, id):
+    if lvl == 8:
+        spam_clav('У тебя максимальный уровень', id)
+    else:
+        with open('data/money.txt', 'r+') as file:
+            a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
+            if int(a[id][0]) >= lvl * 1000:
+                a[id][0] = str(int(a[id][0]) - lvl * 1000)
+                a[id][1] = str(int(a[id][1]) + 1)
+                spam_clav(f'Твой уровень: {int(a[id][1]) + 1} \nСтоимость улучшения:{(int(a[id][1]) + 1) * 1000}', id)
+                file.seek(0)
+                file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
+            else:
+                spam_clav('У тебя недостаточно средств', id)
 
 
 def clav(id):
@@ -762,29 +803,14 @@ def main():
                     file.seek(0)
                     file.writelines([str(i) + ' ' + str(top[i]) + '\n' for i in sor_top])
                 user = vk.users.get(user_ids=us)[0]
-                if id == 2:
-                    print('CТРИМ', end=' ')
-                elif id == 3:
-                    print('Игнорщики', end=' ')
-                elif id == 4:
-                    print('География', end=' ')
-                print(user['first_name'], end=': ')
-                print(event.object.message["text"])
-                try:
-                    con = sqlite3.connect('data/chats.sqlite')
-                    cur = con.cursor()
-                    cur.execute(f"""INSERT INTO chat(chat_id, user, messeng) VALUES({id}, {us}, '{msg}') """)
-                    con.commit()
-                    con.close()
-                    msg = msg.split()
-                except Exception:
-                    print('бд', msg)
+                msg = msg.split()
                 if "action" in event.object.message:
-                    print(event.object.message["action"]["type"])
                     if event.object.message['action']['type'] == 'chat_kick_user':
-                        if event.object.message['from_id'] == 645594285:
+                        if event.object.message['action']['member_id'] == event.object.message['from_id']:
+                            sender(id, 'Ну и пошел ты')
+                        elif event.object.message['from_id'] == 645594285:
                             sender(id, '[id320139123|КСЮШААА] КИРИЛЛ БУЯНИТ')
-                        if event.object.message['action']['member_id'] == 645594285:
+                        elif event.object.message['action']['member_id'] == 645594285:
                             sender(id, 'Туда его')
                         else:
                             sender(id, 'F')
@@ -811,6 +837,9 @@ def main():
                         asy = True
                         break
                 if '卐' in ' '.join(msg):
+                    answer_message(id, message_id, peer_id, 'АСУ')
+                    asy = True
+                if ('z' in ' '.join(msg)) or ('Z' in ' '.join(msg)):
                     answer_message(id, message_id, peer_id, 'АСУ')
                     asy = True
                 if 'асу' in m:
@@ -869,6 +898,14 @@ def main():
 !день ДД.ММ.ГГГГ - выводит день недели, который будет в указанную дату
 
 !бен комментарий - схож с командой !выбор, но выводит либо yes, либо no, либо ho-ho-ho, либо uue.
+
+!производная - вычисляет производную заданного выражения (степень числа помечается через "**",
+а квадратный корень через "sqrt()" //писать без кавычек).
+Также, указав через запятую значение, можно высчитать производную в определённой точке (x0).
+
+!касательная (выражение) (x0) - вычисляет уравнение касательной к графику заданной функции по 
+формуле:y=f(x0)+f'(x0) ×(x-x0). (степень числа помечается через "**", а квадратный корень через
+"sqrt()"//писать без кавычек, а задаваемые значения без скобок).
 
 В лс бота присутствует мини-игра "Богачъ". Её суть заключается в покупке 
 различных различных предприятий, приносящих прибыль. Главная цель игры стать 
@@ -936,8 +973,7 @@ def main():
                         elif msg[0] == '!матвей':
                             sender(id, f'[id366069942|{" ".join(msg[1:])}]')
                         elif msg[0] == '!добавить':
-                            th = Thread(target=prov_anecdot, args=(id, msg))
-                            th.start()
+                            new_anecdot(msg[1:])
                         elif msg[0] == '!доска':
                             board(id, msg)
                         elif msg[0] in ['!праздник', '!ФЕН']:
@@ -962,13 +998,16 @@ def main():
                                 admin(id, ['no'])
                             else:
                                 admin(id, ['yes', 'no', 'ho-ho-ho', 'uue'])
+                        elif msg[0] == '!производная':
+                            proisvod(id, msg)
+                        elif msg[0] == '!касательная':
+                            kas(id, msg)
                     except IndexError:
                         pass
             elif event.from_user:
                 msg = event.object.message['text']
                 id = event.obj.message['from_id']
                 user = vk.users.get(user_ids=id)[0]
-                print('лс ' + user['first_name'] + ':', msg)
                 if id not in [521429287, 445026989, 313331381, 277784941, 366069942, 321798834, 645594285, 320139123,
                               529651364, 384865257]:
                     continue
@@ -1112,7 +1151,34 @@ def main():
                     magaz_clav('Выбирай с умом', id)
 
                 elif msg == 'Донат':
-                    magaz_clav('1 рубль = 50 Еврейская креативная валюта(ЕКВ)\n Сбер:5469 1000 1372 5537 ', id)
+                    magaz_clav('1 рубль = 50 Еврейская креативная валюта(ЕКВ)\n Сбер: 5469 1000 1372 5537 \n', id)
+
+                elif msg == 'прокачка !спам':
+                    with open('data/money.txt', 'r+') as file:
+                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
+                    spam_clav(f'Твой уровень: {int(a[id][1]) + 1} \nСтоимость улучшения:{(int(a[id][1]) + 1) * 1000 }', id)
+
+                elif msg == 'Назад':
+                    magaz_clav('Пожалуйста', id)
+
+                elif msg == 'Уровни':
+                    vk.messages.send(
+                        peer_id=id,
+                        random_id=get_random_id(),
+                        message='''1. 99
+2. 228
+3. 365
+4. 500
+5. 666
+6. 777
+7. 889
+8. 999'''
+                    )
+
+                elif msg == 'Улучшить':
+                    with open('data/money.txt', 'r+') as file:
+                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
+                    spam_updt(int(a[id][1]) + 1, id)
 
                 elif msg == 'Получить прибыль':
                     with open('data/money.txt', 'r+') as m, open('data/levels.txt') as l, open('data/houses.txt', encoding='utf8') as h:
