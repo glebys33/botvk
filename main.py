@@ -8,7 +8,7 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.utils import get_random_id
 from threading import Thread
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from config import TOKEN
 from bs4 import BeautifulSoup as BS
 from sympy import sympify, Symbol, expand
@@ -19,6 +19,7 @@ import random
 vk_session = vk_api.VkApi(token=TOKEN)
 longpoll = VkBotLongPoll(vk_session, 209322786)
 vk = vk_session.get_api()
+print("Бот запущен")
 ''' ✓ / ❌
 ❌сообщения как валюта
 ✓счётчик дней / !доска
@@ -27,9 +28,9 @@ vk = vk_session.get_api()
 ✓доброе утро + сн
 ежедневное ограничение на анекдоты
 сделать авто определение +/- у !доски
-добавить wifi.py в main.py
+❌добавить wifi.py в main.py
 ✓!пабло
-!через+'''
+✓!через'''
 
 
 def sender(id, text):
@@ -89,14 +90,26 @@ def spam(id, msg, us):
     try:
         if len(msg) != 2:
             if msg[-1] != '0':
-                with open('data/spam.txt') as file, open('data/money.txt') as m:
-                    a = {int(i.split()[0]): i.split()[1:] for i in m.readlines() if len(i.split()) > 0}
-                    spam = file.readlines()
-                if int(msg[-1]) <= int(spam[int(a[us][1])]):
-                    for _ in range(int(msg[-1])):
-                        sender(id, f' '.join(msg[1:-1]))
+                con = sqlite3.connect('data/rich.db')
+                cur = con.cursor()
+                res = cur.execute('''SELECT spam FROM money WHERE user_id = ?''', (us,)).fetchone()
+                if res is None:
+                    cur.execute(
+                        f'''INSERT INTO money(user_id, score, spam, booster, page, date) VALUES({us}, 50, 0, 1, 0,
+{datetime.now().day - 1}) ''')
+                    cur.execute(
+                        f'''INSERT INTO levels(user_id, level) VALUES({us}, 
+                        "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0") ''')
+                    con.commit()
+                    con.close()
+                    spam(id, msg, us)
                 else:
-                    sender(id, 'Много хочешь))')
+                    n_spam = [99, 228, 365, 500, 666, 777, 889, 999]
+                    if int(msg[-1]) <= n_spam[[*res][0]]:
+                        for _ in range(int(msg[-1])):
+                            sender(id, f' '.join(msg[1:-1]))
+                    else:
+                        sender(id, 'Много хочешь))')
         elif len(msg) == 2 and isdigit(msg[1]):
             sender(id, f'И что я по твоему должен сделать {msg[-1]} раз?')
         else:
@@ -106,10 +119,14 @@ def spam(id, msg, us):
 
 
 def anecdot(id):
-    con = sqlite3.connect('data/анекдоты.sqlite')
+    con = sqlite3.connect('data/jokes.db')
     cur = con.cursor()
-    res = cur.execute('''SELECT anecdote FROM anecdotes ORDER BY RANDOM() LIMIT 1;''').fetchall()
-    sender(id, res)
+    res = cur.execute('''SELECT joke FROM jokes WHERE chat_id = ? ORDER BY RANDOM() LIMIT 1''', (id,)).fetchall()
+    con.close()
+    if len(res) == 0:
+        sender(id, 'У вас нет анекдотов')
+    else:
+        sender(id, res)
 
 
 def primer(id, text):
@@ -136,9 +153,9 @@ def idvk(id, id1=1, id2=100):
         sender(id, f'[id{i}|{i}]')
 
 
-def date(id, date):
+def when(id, day_date):
     try:
-        sender(id, f'{(datetime.strptime(date, "%d.%m.%Y") - datetime.now()).days + 1} дней')
+        sender(id, f'{(datetime.strptime(day_date, "%d.%m.%Y") - datetime.now()).days + 1} дней')
     except ValueError:
         sender(id, 'Моя твоя не понимать, что твоя хотеть.')
 
@@ -155,11 +172,12 @@ def chislo(id, text):
         sender(id, 'некорректные данные')
 
 
-def new_anecdot(text):
-    con = sqlite3.connect('data/анекдоты.sqlite')
+def new_anecdot(text, id):
+    con = sqlite3.connect('data/jokes.db')
     cur = con.cursor()
-    cur.execute('''INSERT INTO anecdotes(anecdote) VALUES (?)''', (" ".join(text),))
+    cur.execute('''INSERT INTO jokes(joke, chat_id) VALUES (?, ?)''', (" ".join(text), id))
     con.commit()
+    con.close()
 
 
 def ng(id):
@@ -192,7 +210,13 @@ def good_morning_and_good_night():
 
 def tic_tac_toe(id, id1, id2):
     try:
-        p1, p2 = id1, int(id2)
+        if id2[:3] == '[id':
+            p1, p2 = id1, int(id2.split('|')[0][3:])
+        elif isdigit(id2):
+            p1, p2 = id1, int(id2)
+        else:
+            sender(id, 'Последним должны быть число (id противника) либо ссылка на него через @')
+            return
     except ValueError:
         sender(id, 'Последним должны быть число (id противника)')
         return
@@ -291,7 +315,7 @@ def weekday(id, msg):
 
 
 def cherez(id, mag):
-    pass
+    sender(id, date.today() + timedelta(days=int(mag)))
 
 
 def update():
@@ -583,7 +607,7 @@ def kas(id, msg):
             x = Symbol('x')
             fx = expr.subs(x, int(msg[-1]))
             fsx = pr.subs(x, int(msg[-1]))
-            ans = fx + fsx*(x - int(msg[-1]))
+            ans = fx + fsx * (x - int(msg[-1]))
             sender(id, f'y = {expand(ans)}')
         else:
             sender(id, 'Последним должно быть число')
@@ -614,7 +638,7 @@ def defolt_clav(text: str, id: int):
     )
 
 
-def zdan_clav(text: str, house: str, lvl: int,  id: int):
+def zdan_clav(text: str, house: str, lvl: int, id: int):
     keyboard = VkKeyboard(one_time=False)
 
     if lvl == 0:
@@ -699,16 +723,21 @@ def spam_updt(lvl, id):
     if lvl == 8:
         spam_clav('У тебя максимальный уровень', id)
     else:
-        with open('data/money.txt', 'r+') as file:
-            a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-            if int(a[id][0]) >= lvl * 1000:
-                a[id][0] = str(int(a[id][0]) - lvl * 1000)
-                a[id][1] = str(int(a[id][1]) + 1)
-                spam_clav(f'Твой уровень: {int(a[id][1]) + 1} \nСтоимость улучшения:{(int(a[id][1]) + 1) * 1000}', id)
-                file.seek(0)
-                file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
-            else:
-                spam_clav('У тебя недостаточно средств', id)
+        con = sqlite3.connect('data/rich.db')
+        cur = con.cursor()
+        res = cur.execute('''SELECT score, spam FROM money WHERE user_id = ?''', (id,)).fetchone()
+        if [*res][0] >= lvl * 1000:
+            cur.execute('''UPDATE money
+            SET score = ?
+            WHERE user_id = ?''', ([*res][0] - lvl * 1000, id))
+            cur.execute('''UPDATE money
+            SET spam = ?
+            WHERE user_id = ?''', (lvl, id))
+            con.commit()
+            con.close()
+            spam_clav(f'Твой уровень: {lvl + 1} \nСтоимость улучшения:{(lvl + 1) * 1000}', id)
+        else:
+            spam_clav('У тебя недостаточно средств', id)
 
 
 def clav(id):
@@ -746,26 +775,33 @@ def clav(id):
 
 
 def buy_zavod(zav, id):
-    with open('data/houses.txt', encoding='utf8') as f, open('data/money.txt', 'r+') as m, open('data/levels.txt', 'r+') as l:
-        h = {' '.join(i.split()[:-6]): i.split()[-6:] for i in f.readlines() if len(i.split()) > 0}
-        zavid = list(h.keys()).index(zav)
-        a = {int(i.split()[0]): i.split()[1:] for i in m.readlines() if len(i.split()) > 0}
-        lvl = {int(i.split()[0]): i.split()[1:] for i in l.readlines() if len(i.split()) > 0}
-        if (int(lvl[id][zavid]) < 3) and (int(a[id][0]) >= int(h[zav][3 + int(lvl[id][zavid])])):
-            a[id][0] = str(int(a[id][0]) - int(h[zav][3 + int(lvl[id][zavid])]))
-            lvl[id][zavid] = str(int(lvl[id][zavid]) + 1)
-            if int(lvl[id][zavid]) == 1:
-                zdan_clav(f'Вы преобрели {zav}', zav, int(lvl[id][zavid]), id)
-            else:
-                zdan_clav('Уровень повышен', zav, int(lvl[id][zavid]), id)
-            m.seek(0)
-            m.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
-            l.seek(0)
-            l.writelines([str(i) + ' ' + " ".join(lvl[i]) + '\n' for i in lvl])
-        elif int(lvl[id][zavid]) == 3:
-            zdan_clav('Это здание максимального уровня', zav, 3, id)
-        elif int(a[id][0]) < int(h[zav][3 + int(lvl[id][zavid])]):
-            zdan_clav('Недостаточно средств', zav, int(lvl[id][zavid]), id)
+    con = sqlite3.connect('data/rich.db')
+    cur = con.cursor()
+    res = cur.execute('''SELECT * FROM factories''').fetchall()
+    h = {i[1]: i[2:] for i in [*res]}
+    factory = list(h.keys()).index(zav)
+    res = cur.execute('''SELECT level FROM levels WHERE user_id = ?''', (id,)).fetchone()
+    lvl = [*res][0].split()
+    res = cur.execute('''SELECT score FROM money WHERE user_id = ?''', (id,)).fetchone()
+    money = [*res][0]
+    if (int(lvl[factory]) < 3) and (money >= h[zav][3 + int(lvl[factory])]):
+        cur.execute('''UPDATE money
+SET score = ?
+WHERE user_id = ?''', (money - h[zav][3 + int(lvl[factory])], id))
+        lvl[factory] = str(int(lvl[factory]) + 1)
+        cur.execute('''UPDATE levels
+SET level = ?
+WHERE user_id = ?''', (' '.join(lvl), id))
+        con.commit()
+        con.close()
+        if int(lvl[factory]) == '1':
+            zdan_clav(f'Вы преобрели {zav}', zav, int(lvl[factory]), id)
+        else:
+            zdan_clav('Уровень повышен', zav, int(lvl[factory]), id)
+    elif int(lvl[id][factory]) == 3:
+        zdan_clav('Это здание максимального уровня', zav, 3, id)
+    else:
+        zdan_clav('Недостаточно средств', zav, int(lvl[id][factory]), id)
 
 
 def start():
@@ -788,21 +824,31 @@ def main():
                 peer_id = event.object.message['peer_id']
                 message_id = event.object.message['conversation_message_id']
                 us = event.object.message['from_id']
-                top = {}
-                with open('data/top.txt', 'r+') as file:
-                    r = file.readlines()
-                    for i in r:
-                        user = list(map(int, i.split()))
-                        top[user[0]] = user[1]
-                    if us in top:
-                        top[us] += 1
-                    else:
-                        top[us] = 1
-                    sor_tup = sorted(top.items(), key=lambda item: item[1])
-                    sor_top = {k: v for k, v in sor_tup}
-                    file.seek(0)
-                    file.writelines([str(i) + ' ' + str(top[i]) + '\n' for i in sor_top])
+                if id == 2:
+                    print('Стрим', end=' ')
+                elif id == 3:
+                    print('Игнорщики', end=' ')
+                elif id == 4:
+                    print('География', end=' ')
+                con = sqlite3.connect('data/top.db')
+                cur = con.cursor()
+                res = cur.execute('''SELECT user_id, score FROM top
+        WHERE chat_id = ?''', (id,))
+                top = {i[0]: i[1] for i in [*res]}
+                if us in top:
+                    top[us] += 1
+                    cur.execute('''UPDATE top
+SET score = ?
+WHERE user_id = ? AND chat_id = ?''', (top[us], us, id))
+                else:
+                    cur.execute('INSERT INTO top(score, user_id, chat_id) VALUES(1, ?, ?)', (us, id))
+                    top[us] = 1
+                con.commit()
+                con.close()
+                sor_tup = sorted(top.items(), key=lambda item: item[1], reverse=True)
+                sor_top = {k: v for k, v in sor_tup}
                 user = vk.users.get(user_ids=us)[0]
+                print(user['first_name'], msg, sep=': ')
                 msg = msg.split()
                 if "action" in event.object.message:
                     if event.object.message['action']['type'] == 'chat_kick_user':
@@ -922,11 +968,8 @@ def main():
                         elif msg[0] in ['!выбор', '!админ', '!выбери', '!choice', '!choose', '!pick']:
                             admin(id, msg[1:])
                         elif msg[0] == '!топ':
-                            with open('data/top.txt') as file:
-                                a = [i.split() for i in file.readlines()]
-                                a.reverse()
-                                sender(id,
-                                       '\n'.join([f"{vk.users.get(user_ids=i)[0]['first_name']} {i[1]}" for i in a]))
+                            sender(id, '\n'.join([vk.users.get(user_ids=i)[0]['first_name'] + ': ' + str(sor_top[i])
+                                                  for i in sor_top]))
                         elif msg[0] == '!спам':
                             th = Thread(target=spam, args=(id, msg, us))
                             th.start()
@@ -938,7 +981,7 @@ def main():
                             anecdot(id)
                         elif msg[0] == '!когда':
                             if len(msg) == 2:
-                                date(id, msg[1])
+                                when(id, msg[1])
                             else:
                                 sender(id, 'Я не ИИ чтобы додуматься что ты хочешь))')
                         elif msg[0] == '!id':
@@ -960,20 +1003,8 @@ def main():
                             chislo(id, msg[1:])
                         elif msg[0] == '!нг':
                             ng(id)
-                        elif msg[0] == '!глеб':
-                            sender(id, f'[id384865257|{" ".join(msg[1:])}]')
-                        elif msg[0] == '!ксюша':
-                            sender(id, f'[id320139123|{" ".join(msg[1:])}]')
-                        elif msg[0] == '!кирилл':
-                            sender(id, f'[id645594285|{" ".join(msg[1:])}]')
-                        elif msg[0] == '!андрей':
-                            sender(id, f'[id529651364|{" ".join(msg[1:])}]')
-                        elif msg[0] == '!сережа':
-                            sender(id, f'[id321798834|{" ".join(msg[1:])}]')
-                        elif msg[0] == '!матвей':
-                            sender(id, f'[id366069942|{" ".join(msg[1:])}]')
                         elif msg[0] == '!добавить':
-                            new_anecdot(msg[1:])
+                            new_anecdot(msg[1:], id)
                         elif msg[0] == '!доска':
                             board(id, msg)
                         elif msg[0] in ['!праздник', '!ФЕН']:
@@ -990,7 +1021,7 @@ def main():
                         elif msg[0] == '!день':
                             weekday(id, msg)
                         elif msg[0] == '!через':
-                            cherez(id, msg)
+                            cherez(id, msg[1])
                         elif msg[0] == '!клава':
                             clav(id)
                         elif msg[0] == '!бен':
@@ -1008,143 +1039,63 @@ def main():
                 msg = event.object.message['text']
                 id = event.obj.message['from_id']
                 user = vk.users.get(user_ids=id)[0]
-                if id not in [521429287, 445026989, 313331381, 277784941, 366069942, 321798834, 645594285, 320139123,
-                              529651364, 384865257]:
-                    continue
+                print('лс', user)
+                con = sqlite3.connect('data/rich.db')
+                cur = con.cursor()
+                building = [i[0] for i in cur.execute('''SELECT building FROM factories''').fetchall()]
                 if msg == 'Баланс':
-                    with open('data/money.txt') as file:
-                        a = {int(i.split()[0]): [int(i.split()[1]), int(i.split()[2]), float(i.split()[7])] for i in
-                             file.readlines() if len(i.split()) > 0}
-
-                        if id in a:
-                            defolt_clav(f'Ваш баланс {a[id][0]} \nБустер: {a[id][2]}', id)
-                        else:
-                            defolt_clav('Ты кто такой?', id)
+                    res = cur.execute('''SELECT score, booster FROM money WHERE user_id = ?''', (id,)).fetchone()
+                    con.close()
+                    defolt_clav(f'Ваш баланс {res[0]} \nБустер: {res[1]}', id)
 
                 elif msg == 'Бусты':
                     defolt_clav('В разработке', id)
 
                 elif msg == 'Здания':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                    with open('data/houses.txt', encoding='utf8') as f, open('data/levels.txt', 'r+') as l:
-                        s = f.readlines()
-                        h = {' '.join(i.split()[:-6]): i.split()[-6:] for i in s if len(i.split()) > 0}
-                        house = ' '.join(s[int(a[id][5]) % len(s)].split()[:-6])
-                        zavid = list(h.keys()).index(house)
-                        lvl = {int(i.split()[0]): i.split()[1:] for i in l.readlines()}
-                    zdan_clav(house + f': \nЦена: {s[zavid].split()[-3 + int(lvl[id][zavid])]}', house, int(lvl[id][zavid]), id)
+                    res = cur.execute('''SELECT page FROM money WHERE user_id = ?''', (id,)).fetchone()
+                    page = [*res][0]
+                    res = cur.execute('''SELECT * FROM factories''').fetchall()
+                    h = {i[1]: i[2:] for i in [*res]}
+                    house = [*res][page % len([*res])][1]
+                    factory = list(h.keys()).index(house)
+                    res = cur.execute('''SELECT level FROM levels WHERE user_id = ?''', (id,)).fetchone()
+                    con.close()
+                    lvl = [*res][0].split()
+                    zdan_clav(house + f': \nЦена: {h[house][-3 + int(lvl[factory])]}', house, int(lvl[factory]), id)
 
                 elif msg == '--->':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        a[id][5] = str(int(a[id][5]) + 1)
-                        file.seek(0)
-                        file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
-                    with open('data/houses.txt', encoding='utf8') as f, open('data/levels.txt', 'r+') as l:
-                        s = f.readlines()
-                        h = {' '.join(i.split()[:-6]): i.split()[-6:] for i in s if len(i.split()) > 0}
-                        house = ' '.join(s[int(a[id][5]) % len(s)].split()[:-6])
-                        zavid = list(h.keys()).index(house)
-                        lvl = {int(i.split()[0]): i.split()[1:] for i in l.readlines()}
-                    zdan_clav(house + f': \nЦена: {s[zavid].split()[-3 + int(lvl[id][zavid])]}', house, int(lvl[id][zavid]), id)
+                    res = cur.execute('''SELECT page FROM money WHERE user_id = ?''', (id,)).fetchone()
+                    page = [*res][0]
+                    page += 1
+                    cur.execute(f'''UPDATE money
+                    SET page = {page}
+                    WHERE user_id = {id}''')
+                    con.commit()
+                    res = cur.execute('''SELECT * FROM factories''').fetchall()
+                    h = {i[1]: i[2:] for i in [*res]}
+                    house = [*res][page % len([*res])][1]
+                    factory = list(h.keys()).index(house)
+                    res = cur.execute('''SELECT level FROM levels WHERE user_id = ?''', (id,)).fetchone()
+                    lvl = [*res][0].split()
+                    zdan_clav(house + f': \nЦена: {h[house][-3 + int(lvl[factory])]}', house, int(lvl[factory]), id)
 
                 elif msg == '<---':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                        a[id][5] = str(int(a[id][5]) - 1)
-                        file.seek(0)
-                        file.writelines([str(i) + ' ' + " ".join(a[i]) + '\n' for i in a])
-                    with open('data/houses.txt', encoding='utf8') as f, open('data/levels.txt', 'r+') as l:
-                        s = f.readlines()
-                        h = {' '.join(i.split()[:-6]): i.split()[-6:] for i in s if len(i.split()) > 0}
-                        house = ' '.join(s[int(a[id][5]) % len(s)].split()[:-6])
-                        zavid = list(h.keys()).index(house)
-                        lvl = {int(i.split()[0]): i.split()[1:] for i in l.readlines()}
-                    zdan_clav(house + f': \nЦена: {s[zavid].split()[-3 + int(lvl[id][zavid])]}', house, int(lvl[id][zavid]), id)
+                    res = cur.execute('''SELECT page FROM money WHERE user_id = ?''', (id,)).fetchone()
+                    page = [*res][0]
+                    page -= 1
+                    cur.execute(f'''UPDATE money
+                    SET page = {page}
+                    WHERE user_id = {id}''')
+                    con.commit()
+                    res = cur.execute('''SELECT * FROM factories''').fetchall()
+                    h = {i[1]: i[2:] for i in [*res]}
+                    house = [*res][page % len([*res])][1]
+                    factory = list(h.keys()).index(house)
+                    res = cur.execute('''SELECT level FROM levels WHERE user_id = ?''', (id,)).fetchone()
+                    lvl = [*res][0].split()
+                    zdan_clav(house + f': \nЦена: {h[house][-3 + int(lvl[factory])]}', house, int(lvl[factory]), id)
 
-                elif msg == 'Владимирский химический завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Автоприбор':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Ивановские мануфактуры':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Шишкосушильная фабрика':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Ашинский металлургический завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Навозо-перегнойный завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Конюшня':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Дерьмоперегонный завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Завод ЦЕМЕНТА':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Атомно-ядерный завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'マンガファクトリー':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Целюлозно-бумажный завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Пивоварный завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Фармацестический завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Спермобанк':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Ликёро-водочный завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Завод по производству сала':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Стекольный завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'ВАЗ':
-                    buy_zavod(msg, id)
-
-                elif msg == 'エロアニメ工房':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Предприятие Россетей':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Пельменная фабрика':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Говновяземский мясокомбинат':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Казино "NeNeabalovo100%"':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Завод Ford':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Завод эплокаров':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Рыбный завод':
-                    buy_zavod(msg, id)
-
-                elif msg == 'Space X':
+                elif msg in building:
                     buy_zavod(msg, id)
 
                 elif msg == 'Магазин улучшений':
@@ -1154,9 +1105,8 @@ def main():
                     magaz_clav('1 рубль = 50 Еврейская креативная валюта(ЕКВ)\n Сбер: 5469 1000 1372 5537 \n', id)
 
                 elif msg == 'прокачка !спам':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                    spam_clav(f'Твой уровень: {int(a[id][1]) + 1} \nСтоимость улучшения:{(int(a[id][1]) + 1) * 1000 }', id)
+                    res = cur.execute('''SELECT spam FROM money WHERE user_id = ?''', (id,)).fetchone()
+                    spam_clav(f'Твой уровень: {[*res][0] + 1} \nСтоимость улучшения:{([*res][0] + 1) * 1000}', id)
 
                 elif msg == 'Назад':
                     magaz_clav('Пожалуйста', id)
@@ -1176,37 +1126,54 @@ def main():
                     )
 
                 elif msg == 'Улучшить':
-                    with open('data/money.txt', 'r+') as file:
-                        a = {int(i.split()[0]): i.split()[1:] for i in file.readlines() if len(i.split()) > 0}
-                    spam_updt(int(a[id][1]) + 1, id)
+                    res = cur.execute('''SELECT spam FROM money WHERE user_id = ?''', (id,)).fetchone()
+                    spam_updt([*res][0] + 1, id)
 
                 elif msg == 'Получить прибыль':
-                    with open('data/money.txt', 'r+') as m, open('data/levels.txt') as l, open('data/houses.txt', encoding='utf8') as h:
-                        file = h.readlines()
-                        us_id = {int(i.split()[0]): i.split()[1:] for i in m.readlines() if len(i.split()) > 0}
-                        lvl = {int(i.split()[0]): i.split()[1:] for i in l.readlines()}
-                        last_data = datetime.strptime('.'.join([us_id[id][-2], us_id[id][-1], str(datetime.now().year)]), "%d.%m.%Y")
-                        if last_data.date() == datetime.now().date():
-                            defolt_clav('Ты сегодня уже получал прибыль', id)
-                        elif lvl[id] == ['0' for i in range(len(file))]:
-                            defolt_clav('Тебе нечего получать', id)
-                        else:
-                            us_id[id][-1], us_id[id][-2] = str(datetime.now().month), str(datetime.now().day)
-                            sum_money = 0
-                            for i, j in enumerate(lvl[id]):
-                                if j != '0':
-                                    sum_money += int(file[i].split()[-6:][int(j) - 1])
-                            sum_money *= float(us_id[id][-3])
-                            us_id[id][0] = str(int(us_id[id][0]) + round(sum_money))
-                            defolt_clav(f'Ты получил прибыль: {round(sum_money)}', id)
-                            m.seek(0)
-                            m.writelines([str(i) + ' ' + " ".join(us_id[i]) + '\n' for i in us_id])
+                    res = cur.execute('''SELECT level FROM levels WHERE user_id = ?''', (id,)).fetchone()
+                    lvl = [*res][0].split()
+                    res = cur.execute('''SELECT score, booster, date FROM money WHERE user_id = ?''', (id,)).fetchone()
+                    money = [*res]
+                    res = cur.execute('''SELECT * FROM factories''').fetchall()
+                    h = {i[1]: i[2:] for i in [*res]}
+                    last_data = datetime.strptime(
+                        '.'.join([str(money[2]), str(datetime.now().month), str(datetime.now().year)]),
+                        "%d.%m.%Y")
+                    if last_data.date() == datetime.now().date():
+                        defolt_clav('Ты сегодня уже получал прибыль', id)
+                    elif lvl == ['0' for _ in range(len(h))]:
+                        defolt_clav('Тебе нечего получать', id)
+                    else:
+                        cur.execute('''UPDATE money
+                        SET date = ?
+                        WHERE user_id = ?''', (datetime.now().day, id))
+                        sum_money = 0
+                        for i, j in enumerate(lvl):
+                            if j != '0':
+                                sum_money += int([*res][i][int(j) + 1])
+                        sum_money *= money[1]
+                        money[0] += round(sum_money)
+                        cur.execute('''UPDATE money
+                        SET score = ?
+                        WHERE user_id = ?''', (money[0], id))
+                        con.commit()
+                        defolt_clav(f'Ты получил прибыль: {round(sum_money)}', id)
 
                 elif msg == 'Выход':
                     defolt_clav('Главное меню', id)
 
                 elif msg == 'Начать':
-                    defolt_clav('Дароу новый богачъ', id)
+                    res = cur.execute('''SELECT spam FROM money WHERE user_id = ?''', (id,)).fetchone()
+                    if res is None:
+                        cur.execute(
+                            f'''INSERT INTO money(user_id, score, spam, booster, page, date) VALUES({id}, 50, 0, 1, 0,
+{datetime.now().day - 1})''')
+                        cur.execute(
+                            f'''INSERT INTO levels(user_id, level) VALUES({id},
+                             "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0") ''')
+                        con.commit()
+                        defolt_clav('Дароу новый богачъ', id)
+                con.close()
 
 
 if __name__ == '__main__':
